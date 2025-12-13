@@ -32,7 +32,7 @@
 ## Древо проекта
 
 ```
-siem-system/
+free-cloud-siem/
 ├── README.md                    # 🚀 Quickstart + API docs
 ├── docker-compose.yml           # 🐳 Local dev/prod stack
 ├── docker-compose.monitoring.yml # 📊 Prometheus/Grafana
