@@ -1,0 +1,4 @@
+server_url: "ws://localhost:8080/ws"
+log_files:
+  - "test.log"  # Для Windows создайте пустой файл
+batch_size: 50
