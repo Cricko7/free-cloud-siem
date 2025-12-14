@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Production DB
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: siem
+      POSTGRES_USER: siem
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-supersecret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U siem siem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis для кеша правил
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+
+  # SIEM Server (Go)
+  siem-server:
+    build: ./server
+    environment:
+      DATABASE_URL: "postgres://siem:${PG_PASSWORD:-supersecret}@postgres:5432/siem?sslmode=disable"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.siem.rule=Host(`siem.localhost`)"
+      - "traefik.http.routers.siem.entrypoints=web"
+      - "traefik.http.services.siem.loadbalancer.server.port=8080"
+
+  # React Dashboard
+  dashboard:
+    build: ./dashboard
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`dashboard.localhost`)"
+      - "traefik.http.routers.dashboard.entrypoints=web"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=80"
+
+  # Agent Builder (cross-platform)
+  agent-builder:
+    build: ./agent
+    volumes:
+      - ./agent-dist:/app/dist
+    environment:
+      GOOS: linux
+      GOARCH: amd64
+
+  # Traefik Reverse Proxy + HTTPS
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+volumes:
+  postgres_data:
