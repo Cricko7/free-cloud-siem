@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siem-server
+  namespace: siem
+  labels:
+    app: siem-server
+spec:
+  replicas: 3  # ✅ HA!
+  selector:
+    matchLabels:
+      app: siem-server
+  template:
+    metadata:
+      labels:
+        app: siem-server
+    spec:
+      containers:
+      - name: siem-server
+        image: your-registry/siem-server:latest  # ✅ Замените!
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DATABASE_URL
+          value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/siem?sslmode=disable"
+        - name: REDIS_URL
+          value: "redis://redis:6379"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: siem-server
+  namespace: siem
+spec:
+  selector:
+    app: siem-server
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP
