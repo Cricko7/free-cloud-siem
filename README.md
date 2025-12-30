@@ -146,3 +146,100 @@ cd ../dashboard && npm i && npm run dev
 
 ---
 
+# 🧪 Development Workflow !!!
+## Local Setup:
+
+### 1. Clone + deps
+
+```
+git clone https://github.com/Cricko7/free-cloud-siem.git
+cd free-cloud-siem
+```
+
+### 2. Agent dev
+
+```
+cd agent
+go mod tidy
+go run main.go
+```
+
+### 3. Server dev (new terminal)
+
+```
+cd ../server/cmd/server
+go mod tidy
+go run main.go
+```
+
+### 4. Test data
+
+```
+cd ../../agent
+for i in {1..10}; do echo "Failed password for root from 89.23.100.99" >> test.log; done
+```
+
+---
+
+# 🆕 Добавление новой Rule !!!
+## Parser (agent/parser.go)
+
+```go
+var patterns = map[string]string{
+    "SUSPICIOUS_FILE": `rm -rf /|wget.*evil\.com`,
+}
+
+// В parseLogLine():
+if match := regexp.MustCompile(patterns["SUSPICIOUS_FILE"]).FindString(line); match != "" {
+    return Event{EventType: "SUSPICIOUS_FILE", Level: "HIGH"}
+}
+```
+
+## Detection Rule (server/internal/rules/)
+
+```go
+// rules/suspicious_file.go
+func CheckSuspiciousFile(events []Event) []Alert {
+    for _, e := range events {
+        if e.EventType == "SUSPICIOUS_FILE" {
+            return []Alert{{
+                Rule: "SUSPICIOUS_FILE",
+                Severity: "CRITICAL",
+                Score: 1.0,
+                Raw: e.Raw,
+            }}
+        }
+    }
+    return nil
+}
+```
+
+
+## Register Rule (server/main.go)
+
+```go
+rules := []RuleFunc{
+    CheckBruteforce,
+    CheckSudoPrivesc,
+    CheckSuspiciousFile,  // ← Новая rule
+}
+```
+
+---
+---
+# 🤝 Как присоединиться ???
+
+```
+# 1. Fork + clone
+git clone https://github.com/YOUR-NICK/free-cloud-siem.git
+cd free-cloud-siem
+
+# 2. Local dev (2 терминала)
+cd agent && go run main.go          # Terminal 1
+cd ../server/cmd/server && go run main.go  # Terminal 2
+
+# 3. Test your rule
+cd ../../agent
+for i in {1..10}; do echo "Failed password for root from 89.23.100.99" >> test.log; done
+# → http://localhost/alerts → HIGH alert!
+```
