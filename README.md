@@ -226,20 +226,3 @@ rules := []RuleFunc{
 ```
 
 ---
----
-# 🤝 Как присоединиться ???
-
-```
-# 1. Fork + clone
-git clone https://github.com/YOUR-NICK/free-cloud-siem.git
-cd free-cloud-siem
-
-# 2. Local dev (2 терминала)
-cd agent && go run main.go          # Terminal 1
-cd ../server/cmd/server && go run main.go  # Terminal 2
-
-# 3. Test your rule
-cd ../../agent
-for i in {1..10}; do echo "Failed password for root from 89.23.100.99" >> test.log; done
-# → http://localhost/alerts → HIGH alert!
-```
